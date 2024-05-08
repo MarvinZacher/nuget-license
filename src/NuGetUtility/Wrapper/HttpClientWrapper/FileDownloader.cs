@@ -2,6 +2,7 @@
 // The license conditions are provided in the LICENSE file located in the project root
 
 using System.Net.Http;
+using System.Text;
 
 namespace NuGetUtility.Wrapper.HttpClientWrapper
 {
@@ -37,6 +38,13 @@ namespace NuGetUtility.Wrapper.HttpClientWrapper
             {
                 _parallelDownloadLimiter.Release();
             }
+        }
+
+        public async Task SaveFile(string content, string fileName, CancellationToken token)
+        {
+            using FileStream file = File.OpenWrite(Path.Combine(_downloadDirectory, fileName));
+            var bytes = Encoding.UTF8.GetBytes(content);
+            await file.WriteAsync(bytes, 0, bytes.Length);
         }
 
 #if NETFRAMEWORK

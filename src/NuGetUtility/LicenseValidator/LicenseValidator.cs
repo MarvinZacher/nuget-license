@@ -5,6 +5,8 @@ using System.Collections.Concurrent;
 using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Text;
+using Newtonsoft.Json.Linq;
+using NuGet.Common;
 using NuGetUtility.Extensions;
 using NuGetUtility.PackageInformationReader;
 using NuGetUtility.Wrapper.HttpClientWrapper;
@@ -48,6 +50,7 @@ namespace NuGetUtility.LicenseValidator
                 }
                 else if (info.PackageInfo.LicenseMetadata != null)
                 {
+                    await DownloadFileLicense(info.PackageInfo, info.Context, token);
                     ValidateLicenseByMetadata(info.PackageInfo, info.Context, result);
                 }
                 else if (info.PackageInfo.LicenseUrl != null)
@@ -110,6 +113,29 @@ namespace NuGetUtility.LicenseValidator
             result.AddOrUpdate(new LicenseNameAndVersion(info.Identity.Id, info.Identity.Version),
                 newValue,
                 (key, oldValue) => UpdateResult(oldValue, newValue));
+        }
+
+        private async Task DownloadFileLicense(IPackageMetadata info, string context, CancellationToken token)
+        {
+            if (string.IsNullOrEmpty(info.LicenseContent))
+            {
+                return;
+            }
+
+            try
+            {
+                await _fileDownloader.SaveFile(info.LicenseContent,
+                    $"{info.Identity.Id}__{info.Identity.Version}.html",
+                    token);
+            }
+            catch (OperationCanceledException)
+            {
+                // swallow cancellation
+            }
+            catch (Exception e)
+            {
+                throw new LicenseDownloadException(e, context, info.Identity);
+            }
         }
 
         private void AddOrUpdateFileLicense(IPackageMetadata info,

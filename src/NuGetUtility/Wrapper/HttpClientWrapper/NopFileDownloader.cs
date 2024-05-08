@@ -9,5 +9,10 @@ namespace NuGetUtility.Wrapper.HttpClientWrapper
         {
             return Task.CompletedTask;
         }
+
+        public Task SaveFile(string content, string fileName, CancellationToken token)
+        {
+            return Task.CompletedTask;
+        }
     }
 }
