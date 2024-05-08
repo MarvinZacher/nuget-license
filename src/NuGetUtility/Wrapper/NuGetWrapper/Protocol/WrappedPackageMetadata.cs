@@ -12,11 +12,12 @@ namespace NuGetUtility.Wrapper.NuGetWrapper.Protocol
     {
         private readonly ManifestMetadata _metadata;
 
-        public WrappedPackageMetadata(ManifestMetadata metadata)
+        public WrappedPackageMetadata(ManifestMetadata metadata, string? licenseContent = null)
         {
             Identity = new PackageIdentity(metadata.Id, new WrappedNuGetVersion(metadata.Version));
             LicenseMetadata = metadata.LicenseMetadata;
             _metadata = metadata;
+            LicenseContent = licenseContent ?? string.Empty;
         }
 
         public PackageIdentity Identity { get; }
@@ -36,5 +37,7 @@ namespace NuGetUtility.Wrapper.NuGetWrapper.Protocol
         public string Authors => string.Join(",", _metadata.Authors); // https://learn.microsoft.com/en-us/nuget/reference/nuspec#authors
 
         public Packaging.LicenseMetadata? LicenseMetadata { get; }
+
+        public string LicenseContent { get; }
     }
 }

@@ -1,6 +1,8 @@
 // Licensed to the projects contributors.
 // The license conditions are provided in the LICENSE file located in the project root
 
+using System.Collections.Generic;
+using System.Security.Principal;
 using NuGet.Configuration;
 using NuGet.Packaging;
 using NuGet.Protocol.Core.Types;
@@ -29,7 +31,17 @@ namespace NuGetUtility.Wrapper.NuGetWrapper.Protocol
                 return null;
             }
 
-            using PackageReaderBase pkgStream = cachedPackage.PackageReader;
+            return GetPackageFromReader(identity, cachedPackage.PackageReader);
+        }
+
+        public static IWrappedPackageMetadata? GetPackageFromStream(PackageIdentity identity, Stream stream)
+        {
+            using PackageReaderBase packageReader = new PackageArchiveReader(stream);
+            return GetPackageFromReader(identity, packageReader);
+        }
+
+        public static IWrappedPackageMetadata? GetPackageFromReader(PackageIdentity identity, PackageReaderBase pkgStream)
+        {
             var manifest = Manifest.ReadFrom(pkgStream.GetNuspec(), true);
 
             if (manifest.Metadata.Version.Equals(identity.Version))
@@ -37,7 +49,16 @@ namespace NuGetUtility.Wrapper.NuGetWrapper.Protocol
                 return null;
             }
 
-            return new WrappedPackageMetadata(manifest.Metadata);
+            string? licenseContent = null;
+            if (manifest.Metadata.LicenseMetadata?.Type == LicenseType.File)
+            {
+                string licenseFile = manifest.Metadata.LicenseMetadata!.License;
+                Stream stream = pkgStream.GetStream(licenseFile);
+                using StreamReader reader = new StreamReader(stream);
+                licenseContent = reader.ReadToEnd();
+            }
+
+            return new WrappedPackageMetadata(manifest.Metadata, licenseContent);
         }
     }
 }

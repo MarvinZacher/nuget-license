@@ -95,6 +95,13 @@ namespace NuGetUtility.Test.LicenseValidator
             return packageInfo;
         }
 
+        private IPackageMetadata SetupPackageWithFileLicenseInformation(string packageId,
+            INuGetVersion packageVersion,
+            string license)
+        {
+            return SetupPackageWithLicenseInformationOfType(packageId, packageVersion, license, LicenseType.File);
+        }
+
         private IPackageMetadata SetupPackageWithExpressionLicenseInformation(string packageId,
             INuGetVersion packageVersion,
             string license)
@@ -333,6 +340,37 @@ namespace NuGetUtility.Test.LicenseValidator
                             null,
                             null,
                             LicenseInformationOrigin.Expression)
+                    })
+                    .Using(new LicenseValidationResultValueEqualityComparer()));
+        }
+
+        [Test]
+        [ExtendedAutoData(typeof(NuGetVersionBuilder))]
+        public async Task ValidatingLicensesWithFileLicenseInformation_Should_GiveCorrectValidatedLicenseList(
+            string packageId,
+            INuGetVersion packageVersion,
+            string license)
+        {
+            _uut = new NuGetUtility.LicenseValidator.LicenseValidator(_licenseMapping,
+                Array.Empty<string>(),
+                _fileDownloader,
+                _ignoredLicenses);
+
+            IPackageMetadata package = SetupPackageWithFileLicenseInformation(packageId, packageVersion, license);
+
+            IEnumerable<LicenseValidationResult> result = await _uut.Validate(CreateInput(package, _context), _token.Token);
+
+            Assert.That(result,
+                Is.EquivalentTo(new[]
+                    {
+                        new LicenseValidationResult(packageId,
+                            packageVersion,
+                            _projectUrl.ToString(),
+                            license,
+                            null,
+                            null,
+                            null,
+                            LicenseInformationOrigin.File)
                     })
                     .Using(new LicenseValidationResultValueEqualityComparer()));
         }

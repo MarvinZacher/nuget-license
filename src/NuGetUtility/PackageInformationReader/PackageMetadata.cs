@@ -36,5 +36,6 @@ namespace NuGetUtility.PackageInformationReader
         public string Authors => string.Empty;
 
         public LicenseMetadata? LicenseMetadata { get; } = null;
+        public string LicenseContent => string.Empty;
     }
 }

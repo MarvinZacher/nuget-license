@@ -3,6 +3,8 @@
 
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.ComponentModel;
+using System.Text;
 using NuGetUtility.Extensions;
 using NuGetUtility.PackageInformationReader;
 using NuGetUtility.Wrapper.HttpClientWrapper;
@@ -110,6 +112,28 @@ namespace NuGetUtility.LicenseValidator
                 (key, oldValue) => UpdateResult(oldValue, newValue));
         }
 
+        private void AddOrUpdateFileLicense(IPackageMetadata info,
+            string context,
+            ConcurrentDictionary<LicenseNameAndVersion, LicenseValidationResult> result)
+        {
+            var newValue = new LicenseValidationResult(
+                info.Identity.Id,
+                info.Identity.Version,
+                info.ProjectUrl?.ToString(),
+                info.LicenseMetadata!.License,
+                info.LicenseUrl?.AbsoluteUri,
+                info.Copyright,
+                info.Authors,
+                ToLicenseOrigin(info.LicenseMetadata!.Type));
+            newValue.LicenseHeading = info.LicenseContent.Split('\n').FirstOrDefault();
+            var sha = System.Security.Cryptography.SHA1.Create();
+            newValue.LicenseHash = BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(info.LicenseContent))).Replace("-", "");
+            newValue.License = "LicenseRef-" + info.LicenseMetadata!.License;
+            result.AddOrUpdate(new LicenseNameAndVersion(info.Identity.Id, info.Identity.Version),
+                newValue,
+                (key, oldValue) => UpdateResult(oldValue, newValue));
+        }
+
         private LicenseValidationResult UpdateResult(LicenseValidationResult oldValue,
             LicenseValidationResult newValue)
         {
@@ -149,6 +173,10 @@ namespace NuGetUtility.LicenseValidator
                     }
 
                     break;
+                case LicenseType.File:
+                    AddOrUpdateFileLicense(info, context, result);
+
+                    break;
                 default:
                     AddOrUpdateLicense(result,
                         info,
@@ -167,6 +195,7 @@ namespace NuGetUtility.LicenseValidator
             SpdxWithExpression or SpdxLicenseExpression or SpdxLicenseReference => IsLicenseValid(expression.ToString()),
             _ => false,
         };
+
 
         private async Task ValidateLicenseByUrl(IPackageMetadata info,
             string context,
@@ -245,7 +274,8 @@ namespace NuGetUtility.LicenseValidator
         {
             LicenseType.Overwrite => LicenseInformationOrigin.Overwrite,
             LicenseType.Expression => LicenseInformationOrigin.Expression,
-            _ => throw new ArgumentOutOfRangeException(nameof(type), type, $"This conversion method only supports the {nameof(LicenseType.Overwrite)} and {nameof(LicenseType.Expression)} types for conversion")
+            LicenseType.File => LicenseInformationOrigin.File,
+            _ => throw new ArgumentOutOfRangeException(nameof(type), type, $"This conversion method only supports the {nameof(LicenseType.Overwrite)}, {nameof(LicenseType.File)} and {nameof(LicenseType.Expression)} types for conversion")
         };
 
         private sealed record LicenseNameAndVersion(string LicenseName, INuGetVersion Version);

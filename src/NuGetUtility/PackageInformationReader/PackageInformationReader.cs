@@ -79,11 +79,31 @@ namespace NuGetUtility.PackageInformationReader
 
                 if (updatedPackageMetadata != null)
                 {
+                    if (CouldLicenseBeAFile(updatedPackageMetadata))
+                    {
+                        IFindPackageByIdResource? packageByIdResource = await TryGetFindPackageByIdResource(repository);
+                        if (packageByIdResource != null)
+                        {
+                            Stream? packageStream = await packageByIdResource.TryGetStreamAsync(package, cancellation);
+                            if (packageStream != null)
+                            {
+                                IPackageMetadata? packageMetadata = GlobalPackagesFolderUtility.GetPackageFromStream(package, packageStream);
+                                if (packageMetadata != null)
+                                    updatedPackageMetadata = packageMetadata;
+                            }
+                        }
+
+                    }
                     return new PackageSearchResult(updatedPackageMetadata);
                 }
             }
 
             return new PackageSearchResult();
+        }
+
+        private static bool CouldLicenseBeAFile(IPackageMetadata metadata)
+        {
+            return metadata.LicenseUrl?.ToString() == "https://aka.ms/deprecateLicenseUrl" && metadata.LicenseMetadata == null;
         }
 
         private PackageSearchResult TryGetPackageInfoFromCustomInformation(PackageIdentity package)
@@ -103,6 +123,18 @@ namespace NuGetUtility.PackageInformationReader
             try
             {
                 return await repository.GetPackageMetadataResourceAsync();
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        private static async Task<IFindPackageByIdResource?> TryGetFindPackageByIdResource(ISourceRepository repository)
+        {
+            try
+            {
+                return await repository.GetFindPackageByIdResourceAsync();
             }
             catch (Exception)
             {

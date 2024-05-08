@@ -19,6 +19,8 @@ namespace NuGetUtility.LicenseValidator
 
         public string? License { get; set; } = License;
         public string? LicenseUrl { get; set; } = LicenseUrl;
+        public string? LicenseHash { get; set; }
+        public string? LicenseHeading { get; set; }
         public LicenseInformationOrigin LicenseInformationOrigin { get; set; } = LicenseInformationOrigin;
     }
 }
